@@ -12,10 +12,10 @@ class Grid {
 private:
   std::size_t rows_;
   std::size_t cols_;
-  std::vector<double> data;
+  std::vector<double> data_;
 
 public:
-  Grid(std::size_t rows, std::size_t cols) : rows_(rows), cols_(cols), data(rows * cols, 0) {};
+  Grid(std::size_t rows, std::size_t cols) : rows_(rows), cols_(cols), data_(rows * cols, 0) {};
 
   std::size_t rows() const {
     return rows_;
@@ -24,11 +24,18 @@ public:
     return cols_;
   };
 
+  double* data() {
+    return data_.data();
+  };
+  const double* data() const {
+    return data_.data();
+  };
+
   double& operator()(std::size_t i, std::size_t j) {
-    return data[i * cols_ + j];
+    return data_[i * cols_ + j];
   };
   double  operator()(std::size_t i, std::size_t j) const {
-    return data[i * cols_ + j];
+    return data_[i * cols_ + j];
   };
 };
 
@@ -38,23 +45,25 @@ void apply_stencil(const Grid& old_grid, Grid& new_grid) {
   const std::size_t rows = old_grid.rows();
   const std::size_t cols = old_grid.cols();
 
+  const double* old_data = old_grid.data();
+  double* new_data = new_grid.data();
+
   if (rows == 0 || cols == 0) {
     return;
   }
 
   for (std::size_t i = 1; i < rows - 1; i++) {
     for (std::size_t j = 1; j < cols - 1; j++) {
-      new_grid(i, j) = 0.5 * old_grid(i, j) + 0.125 * (old_grid(i - 1, j) + old_grid(i + 1, j) + old_grid(i, j - 1) + old_grid(i, j + 1));
+      std::size_t val = i * cols + j;
+      new_data[val] = 0.5 * old_data[val] + 0.125 * (old_data[val - cols] + old_data[val + cols] + old_data[val - 1] + old_data[val + 1]);
     }
   }
 
-  for (std::size_t j = 0; j < cols; j++) {
-    new_grid(0, j) = old_grid(0, j);
-    new_grid(rows - 1, j) = old_grid(rows - 1, j);
-  }
+  std::copy(old_data, old_data + cols, new_data);
+  std::copy(old_data + cols * (rows - 1), old_data + cols * rows, new_data + cols * (rows - 1));
 
-  for (std::size_t i = 1; i < rows - 1; i++) {
-    new_grid(i, 0) = old_grid(i, 0);
-    new_grid(i, cols - 1) = old_grid(i, cols - 1);
+  for (std::size_t i = cols; i < cols * (rows - 1); i += cols) {
+    new_data[i] = old_data[i];
+    new_data[i + cols - 1] = old_data[i + cols - 1];
   }
 };
