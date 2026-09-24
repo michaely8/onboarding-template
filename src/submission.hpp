@@ -2,6 +2,7 @@
 
 #include <cstddef>
 #include <vector>
+#include <omp.h>
 
 // Starter Grid for the 2D heat-diffusion problem.
 //
@@ -52,6 +53,7 @@ void apply_stencil(const Grid& old_grid, Grid& new_grid) {
     return;
   }
 
+#pragma omp parallel for
   for (std::size_t i = 1; i < rows - 1; i++) {
     for (std::size_t j = 1; j < cols - 1; j++) {
       std::size_t val = i * cols + j;
@@ -62,6 +64,7 @@ void apply_stencil(const Grid& old_grid, Grid& new_grid) {
   std::copy(old_data, old_data + cols, new_data);
   std::copy(old_data + cols * (rows - 1), old_data + cols * rows, new_data + cols * (rows - 1));
 
+#pragma omp parallel for
   for (std::size_t i = cols; i < cols * (rows - 1); i += cols) {
     new_data[i] = old_data[i];
     new_data[i + cols - 1] = old_data[i + cols - 1];
