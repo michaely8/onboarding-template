@@ -1,5 +1,6 @@
 #pragma once
 
+#include <algorithm>
 #include <cstddef>
 #include <vector>
 #include <omp.h>
@@ -54,19 +55,16 @@ void apply_stencil(const Grid& old_grid, Grid& new_grid) {
   }
 
 #pragma omp parallel for
-  for (std::size_t i = 1; i < rows - 1; i++) {
+  for (std::size_t i = cols; i < cols * (rows - 1); i += cols) {
     for (std::size_t j = 1; j < cols - 1; j++) {
-      std::size_t val = i * cols + j;
+      const std::size_t val = i + j;
       new_data[val] = 0.5 * old_data[val] + 0.125 * (old_data[val - cols] + old_data[val + cols] + old_data[val - 1] + old_data[val + 1]);
     }
+
+    new_data[i] = old_data[i];
+    new_data[i + cols - 1] = old_data[i + cols - 1];
   }
 
   std::copy(old_data, old_data + cols, new_data);
   std::copy(old_data + cols * (rows - 1), old_data + cols * rows, new_data + cols * (rows - 1));
-
-#pragma omp parallel for
-  for (std::size_t i = cols; i < cols * (rows - 1); i += cols) {
-    new_data[i] = old_data[i];
-    new_data[i + cols - 1] = old_data[i + cols - 1];
-  }
 };
