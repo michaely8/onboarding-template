@@ -13,10 +13,11 @@ class Grid {
 private:
   std::size_t rows_;
   std::size_t cols_;
+  std::size_t stride_;
   std::vector<double> data_;
 
 public:
-  Grid(std::size_t rows, std::size_t cols) : rows_(rows), cols_(cols), data_(rows * cols, 0) {};
+  Grid(std::size_t rows, std::size_t cols) : rows_(rows), cols_(cols), stride_(((cols + 7) / 8 + 1) * 8), data_(rows * stride_, 0) {};
 
   std::size_t rows() const {
     return rows_;
@@ -24,6 +25,9 @@ public:
   std::size_t cols() const {
     return cols_;
   };
+  std::size_t stride() const {
+    return stride_;
+  }
 
   double* data() {
     return data_.data();
@@ -33,10 +37,10 @@ public:
   };
 
   double& operator()(std::size_t i, std::size_t j) {
-    return data_[i * cols_ + j];
+    return data_[i * stride_ + j];
   };
   double  operator()(std::size_t i, std::size_t j) const {
-    return data_[i * cols_ + j];
+    return data_[i * stride_ + j];
   };
 };
 
@@ -45,6 +49,7 @@ public:
 void apply_stencil(const Grid& old_grid, Grid& new_grid) {
   const std::size_t rows = old_grid.rows();
   const std::size_t cols = old_grid.cols();
+  const std::size_t stride = old_grid.stride();
 
   const double* old_data = old_grid.data();
   double* new_data = new_grid.data();
@@ -54,16 +59,17 @@ void apply_stencil(const Grid& old_grid, Grid& new_grid) {
   }
 
 #pragma omp parallel for
-  for (std::size_t i = cols; i < cols * (rows - 1); i += cols) {
+  for (std::size_t i = stride; i < stride * (rows - 1); i += stride) {
     for (std::size_t j = 1; j < cols - 1; j++) {
       const std::size_t val = i + j;
-      new_data[val] = 0.5 * old_data[val] + 0.125 * (old_data[val - cols] + old_data[val + cols] + old_data[val - 1] + old_data[val + 1]);
+      new_data[val] = 0.5 * old_data[val] + 0.125 * (old_data[val - stride] + old_data[val + stride] + old_data[val - 1] + old_data[val + 1]);
     }
 
     new_data[i] = old_data[i];
     new_data[i + cols - 1] = old_data[i + cols - 1];
   }
 
+  const std::size_t end = stride * (rows - 1);
   std::copy(old_data, old_data + cols, new_data);
-  std::copy(old_data + cols * (rows - 1), old_data + cols * rows, new_data + cols * (rows - 1));
+  std::copy(old_data + end, old_data + end + cols, new_data + end);
 };
