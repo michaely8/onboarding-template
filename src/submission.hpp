@@ -3,8 +3,6 @@
 #include <algorithm>
 #include <cstddef>
 #include <vector>
-#include <omp.h>
-#include <sched.h>
 
 // Starter Grid for the 2D heat-diffusion problem.
 //
@@ -42,23 +40,6 @@ public:
   };
 };
 
-inline void pin_threads() {
-  static bool pinned = false;
-  if (pinned) {
-    return;
-  }
-
-  pinned = true;
-
-#pragma omp parallel
-  {
-    cpu_set_t set;
-    CPU_ZERO(&set);
-    CPU_SET(omp_get_thread_num(), &set);
-    sched_setaffinity(0, sizeof(set), &set);
-  }
-}
-
 // Apply the five-point stencil over all interior points, copying the boundary
 // values unchanged from old_grid to new_grid. Implement your solution here.
 void apply_stencil(const Grid& old_grid, Grid& new_grid) {
@@ -72,9 +53,7 @@ void apply_stencil(const Grid& old_grid, Grid& new_grid) {
     return;
   }
 
-  pin_threads();
-
-#pragma omp parallel for schedule(static)
+#pragma omp parallel for
   for (std::size_t i = cols; i < cols * (rows - 1); i += cols) {
     for (std::size_t j = 1; j < cols - 1; j++) {
       const std::size_t val = i + j;
