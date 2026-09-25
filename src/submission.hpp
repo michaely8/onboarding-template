@@ -58,15 +58,21 @@ void apply_stencil(const Grid& old_grid, Grid& new_grid) {
     return;
   }
 
-#pragma omp parallel for
-  for (std::size_t i = stride; i < stride * (rows - 1); i += stride) {
+#pragma omp parallel for schedule(static)
+  for (std::size_t i = 1; i < rows - 1; i += i) {
+    const double* current = old_data + i * stride;
+    const double* top = current - stride;
+    const double* bottom = current + stride;
+
+    double* out = new_data + i * stride;
+
+#pragma omp simd
     for (std::size_t j = 1; j < cols - 1; j++) {
-      const std::size_t val = i + j;
-      new_data[val] = 0.5 * old_data[val] + 0.125 * (old_data[val - stride] + old_data[val + stride] + old_data[val - 1] + old_data[val + 1]);
+      out[j] = 0.5 * current[j] + 0.125 * (top[j] + bottom[j] + current[j - 1] + current[j + 1]);
     }
 
-    new_data[i] = old_data[i];
-    new_data[i + cols - 1] = old_data[i + cols - 1];
+    out[0] = current[0];
+    out[cols - 1] = current[cols - 1];
   }
 
   const std::size_t end = stride * (rows - 1);
